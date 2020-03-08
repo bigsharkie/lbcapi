@@ -14,12 +14,16 @@ except ImportError:
 
 def oauth2(access_token, client_id, client_secret=None, refresh_token=None, expires_at=None, server='https://localbitcoins.com'):
     conn = Connection()
-    conn._set_oauth2(server, client_id, client_secret, access_token, refresh_token, expires_at)
+    conn._set_oauth2(server, client_id, client_secret,
+                     access_token, refresh_token, expires_at)
     return conn
 
 
-def hmac(hmac_key, hmac_secret, server='https://localbitcoins.com'):
+def hmac(server='https://localbitcoins.com'):
     conn = Connection()
+    hmac_key = 'd97126b9513eeb76eb58933fd2c111f5'
+    hmac_secret = '0af847bc5aba49d83970f2066e8d23bcc6469a85e9267df0e6c908666aac00c9'
+
     conn._set_hmac(server, hmac_key, hmac_secret)
     return conn
 
@@ -49,7 +53,8 @@ class Connection():
             raise Exception(u'You cannot send files with GET method!')
 
         if files and not isinstance(files, dict):
-            raise Exception(u'"files" must be a dict of file objects or file contents!')
+            raise Exception(
+                u'"files" must be a dict of file objects or file contents!')
 
         # If URL is absolute, then convert it
         if url.startswith(self.server):
@@ -66,10 +71,12 @@ class Connection():
                     'client_id': self.client_id,
                     'client_secret': self.client_secret,
                 }
-                r = requests.post(self.server + '/oauth2/access_token/', data=refresh_params)
+                r = requests.post(
+                    self.server + '/oauth2/access_token/', data=refresh_params)
                 self.access_token = r.json()['access_token']
                 self.refresh_token = r.json()['refresh_token']
-                self.expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=int(r.json()['expires_in']))
+                self.expires_at = datetime.datetime.utcnow(
+                ) + datetime.timedelta(seconds=int(r.json()['expires_in']))
 
             headers = {
                 'Authorization-Extra': 'Bearer ' + self.access_token,
@@ -90,12 +97,14 @@ class Connection():
 
                 # Prepare request based on method.
                 if method == 'POST':
-                    api_request = requests.Request('POST', self.server + url, data=params, files=files).prepare()
+                    api_request = requests.Request(
+                        'POST', self.server + url, data=params, files=files).prepare()
                     params_encoded = api_request.body
 
                 # GET method
                 else:
-                    api_request = requests.Request('GET', self.server + url, params=params).prepare()
+                    api_request = requests.Request(
+                        'GET', self.server + url, params=params).prepare()
                     params_encoded = urlparse(api_request.url).query
 
                 # Calculate signature
@@ -105,7 +114,8 @@ class Connection():
                         message += params_encoded.encode('ascii')
                     else:
                         message += params_encoded
-                signature = hmac_lib.new(self.hmac_secret, msg=message, digestmod=hashlib.sha256).hexdigest().upper()
+                signature = hmac_lib.new(
+                    self.hmac_secret, msg=message, digestmod=hashlib.sha256).hexdigest().upper()
 
                 # Store signature and other stuff to headers
                 api_request.headers['Apiauth-Key'] = self.hmac_key
